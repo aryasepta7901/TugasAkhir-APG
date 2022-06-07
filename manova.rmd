@@ -1,0 +1,189 @@
+---
+title: "TA"
+author: "M.Arya Septa K"
+date: '2022-05-26'
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(xlsx)
+data = read.xlsx("D:/STIS/Semester 6/4.Analisis Peubah Ganda/R/TugasAkhir/TugasAPG.xlsx",sheetName = "Data2")
+data
+```
+# Uji Asumsi
+
+## pengujian asumsi kesamaan matriks kovarians untuk ketiga populasi
+->ho:sigma1=sigma2=sigma3
+->H1 : Minimal ada satu yang berbeda
+```{r}
+library("biotools") #aktifkan package asbio
+boxM(data[,1:2],data[,3])
+```
+Terlihat p-value = 0.08427 > 0.05, maka kita gagal tolak H0 berarti  matriks kovarians ketiga metode sama, sehingga kita bisa melanjutkan uji Manova.
+
+## Cek Normalitas
+```{r}
+library('RVAideMemoire') #library untuk 
+#uji multivariate normal
+matU<-as.matrix(data[data$provinsi=="jatim",-3])# method1 
+mshapiro.test(matU)
+matU<-as.matrix(data[data$provinsi=="jabar",-3]) # method2 
+mshapiro.test(matU)
+matU<-as.matrix(data[data$provinsi=="jogja",-3])# method3 
+mshapiro.test(matU)
+```
+Kesimpulan: 
+a=0.01
+1.untuk jatim  ,DIY dan jabar :terlihat pvalue > a maka gagal tolak ho yang berarti data  normal multivariate.
+
+
+Maka deteksi outlier untuk jabar
+
+
+
+# MANOVA
+
+Hipotesis: H0 : μ1 = μ2 = μ3
+H1 : Terdapat metode dengan vektor mean berbeda
+
+Manova TEST
+```{R}
+g= 3 #jumlah Method
+S1 <- cov(data[data$provinsi=="jatim",-3]) 
+S1
+S2 <- cov(data[data$provinsi=="jabar",-3]) 
+S2
+S3 <- cov(data[data$provinsi=="jogja",-3])  
+S3
+
+```
+```{r}
+n1 = nrow(data[data$provinsi=="jatim",-3])
+n1
+n2 = nrow(data[data$provinsi=="jabar",-3])
+n2
+n3 = nrow(data[data$provinsi=="jogja",-3])
+n3
+
+```
+
+Within
+```{r}
+w = (n1-1)*S1+(n2-1)*S2+(n3-1)*S3 
+w
+
+
+```
+```{r}
+x_bar1 =colMeans(data[data$provinsi=="jatim",-3])
+x_bar2 =colMeans(data[data$provinsi=="jabar",-3])
+x_bar3 =colMeans(data[data$provinsi=="jogja",-3])
+x_barAll = colMeans(data[,1:2,-3])
+```
+
+treatment
+```{r}
+t = n1 *(x_bar1 - x_barAll) %*% t(x_bar1 - x_barAll) +n2 *(x_bar2 - x_barAll) %*% t(x_bar2 - x_barAll)+ n3 *(x_bar3 - x_barAll) %*% t(x_bar3 - x_barAll)
+t
+```
+
+Total 
+
+```{r}
+T =t +w
+T
+```
+```{r}
+#DF
+g=3 #jumlah Method
+
+tdf =g-1  #treatment df
+tdf
+wdf = n1+n2+n3-g   #within df
+wdf
+Tdf = n1+n2+n3-1 #Total df
+Tdf
+
+```
+
+Wilks Lambda
+```{r}
+A = det(w)/det(T)
+A
+```
+
+Statistik Uji
+For >=1 variabel and 3 method
+```{r}
+p = ncol(data[,-3])
+fuji  = ((1- sqrt(A))/sqrt(A)) * (n1+n2+n3-p-2)/p
+fuji
+```
+Ftabel
+```{r}
+a=0.05
+ftabel = qf(a,2*p,2*(n1+n2+n3-p-2),lower.tail = FALSE)
+ftabel  
+
+if(ftabel > fuji)
+{
+   print("Gagal Tolak Ho")
+}else{
+   print("Tolak Ho")
+}
+```
+Kesimpulan:
+minimal  ada satu rata2 populasi yang berbeda.untuk mengetahui apa yang berbeda cek dengan  simultanous confidence intervall
+
+95% simultanous confidence intervall
+
+Hitung t
+```{r}
+a=0.05
+p =  ncol(data[,-3])
+t <- qt(a/(p*g*(g-1)),df=n1+n2+n3-g,lower.tail = FALSE) 
+t
+```
+
+```{r}
+n=n1+n2+n3
+for ( i in 1:p ){ 
+ # \tau_{11}-\tau_{21} 
+ Lower12 <- (x_bar1[i]-x_bar2[i])-t*sqrt(w[i,i]/(n-g)*(1/n1+1/n2)) 
+ Upper12 <- (x_bar1[i]-x_bar2[i])+t*sqrt(w[i,i]/(n-g)*(1/n1+1/n2)) 
+ cat("tau1[",i,"]-tau2[",i,"] -> (",Lower12,",",Upper12,")\n",sep="")
+ 
+ # \tau_{11}-\tau_{31} 
+ Lower13 <- (x_bar1[i]-x_bar3[i])-t*sqrt(w[i,i]/(n-g)*(1/n1+1/n3)) 
+ Upper13 <- (x_bar1[i]-x_bar3[i])+t*sqrt(w[i,i]/(n-g)*(1/n1+1/n3)) 
+ cat("tau1[",i,"]-tau3[",i,"] -> (",Lower13,",",Upper13,")\n",sep="")
+ 
+ # \tau_{21}-\tau_{31} 
+ Lower23 <- (x_bar2[i]-x_bar3[i])-t*sqrt(w[i,i]/(n-g)*(1/n2+1/n3)) 
+ Upper23 <- (x_bar2[i]-x_bar3[i])+t*sqrt(w[i,i]/(n-g)*(1/n2+1/n3)) 
+ cat("tau2[",i,"]-tau3[",i,"] -> (",Lower23,",",Upper23,")\n",sep="") }
+
+```
+Kesimpulan:
+-Variabel gini rasio:
+detail:
+1.jabar memiliki rata2 gini rasio lebih besar daripada jatim karena nilai nya negatif
+2.jogja memiliki rata2 gini rasio lebih besar daripada jatim karena nilai negatif
+3.jabar dan jogja gagal tolak ho yang berarti tidak terdapat perbedaan variabel gini rasio
+
+
+-variabel IPM
+detail:
+1.jatim dan jabar gagal tolak ho yang berarti tidak terdapat perbedaan variabel IPM
+2.jogja memiliki rata2 IPM lebih besar daripada jatim karena nilai negatif
+3.jogja memiliki rata2 IPM lebih besar daripada jabar karena nilai negatif
+
+
+
+
+
