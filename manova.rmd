@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(xlsx)
-data = read.xlsx("D:/STIS/Semester 6/4.Analisis Peubah Ganda/R/TugasAkhir/TugasAPG.xlsx",sheetName = "Data2")
+data = read.xlsx("D:/STIS/Semester 6/4.Analisis Peubah Ganda/R/TugasAkhir/Tugas/TugasAPG.xlsx",sheetName = "Data2")
 data
 ```
 # Uji Asumsi
